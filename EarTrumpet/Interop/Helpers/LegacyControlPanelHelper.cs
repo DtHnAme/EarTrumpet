@@ -10,9 +10,7 @@ namespace EarTrumpet.Interop.Helpers
         {
             try
             {
-                var rundllPath = Path.Combine(
-                    Environment.GetEnvironmentVariable("SystemRoot"),
-                    (Environment.Is64BitOperatingSystem ? @"sysnative\rundll32.exe" : @"system32\rundll32.exe"));
+                var rundllPath = Path.Combine(Environment.GetEnvironmentVariable("SystemRoot"), @"system32\rundll32.exe");
 
                 using (Process.Start(rundllPath, $"shell32.dll,Control_RunDLL mmsys.cpl,,{panel}"))
                 { }

@@ -138,7 +138,7 @@ namespace EarTrumpet.UI.Controls
         {
             if (Path.GetDirectoryName(path).StartsWith(_systemPath, StringComparison.InvariantCultureIgnoreCase))
             {
-                path = Path.Combine(_windowsPath, "sysnative", path.Substring(_systemPath.Length + 1));
+                path = Path.Combine(_windowsPath, "system32", path.Substring(_systemPath.Length + 1));
             }
 
             //
