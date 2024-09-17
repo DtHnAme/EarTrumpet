@@ -7,5 +7,6 @@
         Moved = 2,
         Inactive = 3,
         Active = 4,
+        Changed = 5,
     }
 }

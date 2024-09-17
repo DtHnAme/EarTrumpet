@@ -9,15 +9,24 @@ using System.Windows.Threading;
 
 namespace EarTrumpet.DataModel.WindowsAudio.Internal
 {
-    class AudioDeviceSessionCollection : IAudioSessionNotification
+    class AudioDeviceSessionCollection : BindableBase, IAudioSessionNotification
     {
         public ObservableCollection<IAudioDeviceSession> Sessions => _sessions;
+
+        public SessionState State
+        {
+            get
+            {
+                return _isRegistered ? SessionState.Active : SessionState.Inactive;
+            }
+        }
 
         private readonly Dispatcher _dispatcher;
         private readonly ObservableCollection<IAudioDeviceSession> _sessions = new ObservableCollection<IAudioDeviceSession>();
         private readonly List<IAudioDeviceSession> _movedSessions = new List<IAudioDeviceSession>();
         private IAudioSessionManager2 _sessionManager;
         private WeakReference<IAudioDevice> _parent;
+        private bool _isRegistered;
 
         public AudioDeviceSessionCollection(IAudioDevice parent, IMMDevice device, Dispatcher foregroundDispatcher)
         {
@@ -28,6 +37,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             {
                 _sessionManager = device.Activate<IAudioSessionManager2>();
                 _sessionManager.RegisterSessionNotification(this);
+                _isRegistered = true;
                 var enumerator = _sessionManager.GetSessionEnumerator();
                 int count = enumerator.GetCount();
                 for (int i = 0; i < count; i++)
@@ -88,7 +98,10 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         void IAudioSessionNotification.OnSessionCreated(IAudioSessionControl NewSession)
         {
             Trace.WriteLine($"AudioDeviceSessionCollection OnSessionCreated");
-            CreateAndAddSession(NewSession);
+            if (_isRegistered)
+            {
+                CreateAndAddSession(NewSession);
+            }
         }
 
         private void AddSession(IAudioDeviceSession session)
@@ -186,7 +199,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
         private void Session_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            var session = (IAudioDeviceSession)sender;
+            var session = (AudioDeviceSession)sender;
 
             if (e.PropertyName == nameof(session.State))
             {
@@ -199,6 +212,19 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                     RemoveSession(session);
                     _movedSessions.Add(session);
                     session.PropertyChanged += MovedSession_PropertyChanged;
+                }
+                else if (session.State == SessionState.Changed)
+                {
+                    session.PropertyChanged -= Session_PropertyChanged;
+                    session.Dispose();
+
+                    RemoveSession(session);
+
+                    _isRegistered = false;
+                    _dispatcher.BeginInvoke((Action)(() =>
+                    {
+                        RaisePropertyChanged(nameof(State));
+                    }));
                 }
             }
         }
@@ -214,6 +240,23 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
                 AddSession(session);
             }
+        }
+
+        public void Dispose()
+        {
+            foreach (var session in _sessions)
+            {
+                session.PropertyChanged -= Session_PropertyChanged;
+            }
+
+            foreach (var session in _movedSessions)
+            {
+                session.PropertyChanged -= MovedSession_PropertyChanged;
+            }
+
+            _sessionManager.UnregisterSessionNotification(this);
+
+            GC.SuppressFinalize(this);
         }
     }
 }

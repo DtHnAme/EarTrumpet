@@ -102,6 +102,10 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                 {
                     return SessionState.Moved;
                 }
+                else if (_isFormatChanged)
+                {
+                    return SessionState.Changed;
+                }
 
                 switch (_state)
                 {
@@ -140,6 +144,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         private bool _isMoved;
         private bool _moveOnInactive;
         private bool _isRegistered;
+        private bool _isFormatChanged;
         private WeakReference<IAudioDevice> _parent;
 
         public AudioDeviceSession(IAudioDevice parent, IAudioSessionControl session, Dispatcher foregroundDispatcher)
@@ -431,7 +436,23 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             }));
         }
 
-        void IAudioSessionEvents.OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason) => DisconnectSession();
+        void IAudioSessionEvents.OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
+        {
+            Trace.WriteLine($"AudioDeviceSession OnSessionDisconnected: {DisconnectReason}");
+            if (DisconnectReason == AudioSessionDisconnectReason.FormatChanged)
+            {
+                _isFormatChanged = true;
+            }
+            else
+            {
+                _isDisconnected = true;
+            }
+
+            _dispatcher.BeginInvoke((Action)(() =>
+            {
+                RaisePropertyChanged(nameof(State));
+            }));
+        }
 
         void IAudioSessionEvents.OnChannelVolumeChanged(uint ChannelCount, IntPtr afNewChannelVolume, uint ChangedChannel, ref Guid EventContext)
         {
@@ -448,6 +469,20 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         {
             IconPath = NewIconPath;
             RaisePropertyChanged(nameof(IconPath));
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                _session.UnregisterAudioSessionNotification(this);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"AudioDeviceSession Dispose Failed: {ex}");
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

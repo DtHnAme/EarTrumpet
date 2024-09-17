@@ -188,6 +188,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                         device.GetState() == DeviceState.ACTIVE)
                     {
                         var newDevice = new AudioDevice(this, device, _dispatcher);
+                        newDevice.PropertyChanged += AudioDevice_PropertyChanged;
 
                         _dispatcher.Invoke((Action)(() =>
                         {
@@ -270,6 +271,38 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                         TraceLine($"{ex}");
                     }
                 }
+            }
+        }
+
+        private void AudioDevice_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            var audioDevice = (AudioDevice)sender;
+
+            if (e.PropertyName == nameof(audioDevice.State))
+            {
+                var device = _enumerator.GetDevice(audioDevice.Id);
+
+                audioDevice.PropertyChanged -= AudioDevice_PropertyChanged;
+                audioDevice.Dispose();
+
+                _dispatcher.Invoke((Action)(() =>
+                {
+                    Remove(audioDevice);
+                }));
+
+                if (((IMMEndpoint)device).GetDataFlow() == Flow &&
+                    device.GetState() == DeviceState.ACTIVE)
+                {
+                    var newDevice = new AudioDevice(this, device, _dispatcher);
+                    newDevice.PropertyChanged += AudioDevice_PropertyChanged;
+
+                    _dispatcher.Invoke((Action)(() =>
+                    {
+                        Add(newDevice);
+                    }));
+                }
+
+                audioDevice = null;
             }
         }
 

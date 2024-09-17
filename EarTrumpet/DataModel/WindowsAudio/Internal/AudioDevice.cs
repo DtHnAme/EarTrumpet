@@ -53,6 +53,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                 _channels = new AudioDeviceChannelCollection(_deviceVolume, _dispatcher);
                 _sessions = new AudioDeviceSessionCollection(this, _device, _dispatcher);
                 _sessionFilter = new FilteredCollectionChain<IAudioDeviceSession>(_sessions.Sessions, _dispatcher);
+                _sessions.PropertyChanged += SessionCollection_PropertyChanged;
                 Groups = _sessionFilter.Items;
             }
             else
@@ -146,6 +147,14 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                         // Expected in some cases.
                     }
                 }
+            }
+        }
+
+        public SessionState State
+        {
+            get
+            {
+                return _isRegistered ? SessionState.Active : SessionState.Inactive;
             }
         }
 
@@ -244,9 +253,39 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             }));
         }
 
+        private void SessionCollection_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            var collection = (AudioDeviceSessionCollection)sender;
+
+            if (e.PropertyName == nameof(collection.State))
+            {
+                collection.PropertyChanged -= SessionCollection_PropertyChanged;
+                _isRegistered = false;
+                _dispatcher.Invoke((Action)(() =>
+                {
+                    RaisePropertyChanged(nameof(State));
+                }));
+            }
+        }
+
         public void AddFilter(Func<ObservableCollection<IAudioDeviceSession>, ObservableCollection<IAudioDeviceSession>> filter)
         {
             _sessionFilter.AddFilter(filter);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                _sessions.Dispose();
+                _deviceVolume.UnregisterControlChangeNotify(this);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"AudioDevice Dispose Failed {ex}");
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }
