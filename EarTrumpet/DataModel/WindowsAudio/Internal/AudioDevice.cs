@@ -150,13 +150,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             }
         }
 
-        public SessionState State
-        {
-            get
-            {
-                return _isRegistered ? SessionState.Active : SessionState.Inactive;
-            }
-        }
+        public SessionState State => _isRegistered ? SessionState.Active : SessionState.Invalid;
 
         public string Id => _id;
 
@@ -259,8 +253,11 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
             if (e.PropertyName == nameof(collection.State))
             {
-                collection.PropertyChanged -= SessionCollection_PropertyChanged;
-                _isRegistered = false;
+                if (collection.State == SessionState.Invalid)
+                {
+                    collection.PropertyChanged -= SessionCollection_PropertyChanged;
+                    _isRegistered = false;
+                }
                 _dispatcher.Invoke((Action)(() =>
                 {
                     RaisePropertyChanged(nameof(State));

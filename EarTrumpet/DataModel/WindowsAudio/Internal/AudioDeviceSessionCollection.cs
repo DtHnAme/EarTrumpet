@@ -1,4 +1,6 @@
-using EarTrumpet.DataModel.Audio;
+﻿using EarTrumpet.DataModel.Audio;
+using EarTrumpet.Extensions;
+using EarTrumpet.Interop;
 using EarTrumpet.Interop.MMDeviceAPI;
 using System;
 using System.Collections.Generic;
@@ -13,13 +15,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
     {
         public ObservableCollection<IAudioDeviceSession> Sessions => _sessions;
 
-        public SessionState State
-        {
-            get
-            {
-                return _isRegistered ? SessionState.Active : SessionState.Inactive;
-            }
-        }
+        public SessionState State => _isRegistered ? SessionState.Active : SessionState.Invalid;
 
         private readonly int _id;
         private readonly Dispatcher _dispatcher;
@@ -102,6 +98,20 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         void IAudioSessionNotification.OnSessionCreated(IAudioSessionControl NewSession)
         {
             Trace.WriteLine($"AudioDeviceSessionCollection#{_id} OnSessionCreated");
+
+            try
+            {
+                ((IAudioSessionControl2)NewSession).GetSessionInstanceIdentifier(out _);
+            }
+            catch (Exception ex) when (ex.Is(HRESULT.AUDCLNT_E_DEVICE_INVALIDATED))
+            {
+                _isRegistered = false;
+                _dispatcher.BeginInvoke((Action)(() =>
+                {
+                    RaisePropertyChanged(nameof(State));
+                }));
+            }
+
             if (_isRegistered)
             {
                 CreateAndAddSession(NewSession);
@@ -217,19 +227,6 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                     _movedSessions.Add(session);
                     session.PropertyChanged += MovedSession_PropertyChanged;
                 }
-                else if (session.State == SessionState.Changed)
-                {
-                    session.PropertyChanged -= Session_PropertyChanged;
-                    session.Dispose();
-
-                    RemoveSession(session);
-
-                    _isRegistered = false;
-                    _dispatcher.BeginInvoke((Action)(() =>
-                    {
-                        RaisePropertyChanged(nameof(State));
-                    }));
-                }
             }
         }
 
@@ -249,17 +246,32 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         public void Dispose()
         {
             Trace.WriteLine($"AudioDeviceSessionCollection#{_id} Dispose");
-            foreach (var session in _sessions)
+            try
             {
-                session.PropertyChanged -= Session_PropertyChanged;
-            }
+                foreach (var session in from AudioDeviceSessionGroup appGroup in _sessions
+                                        from AudioDeviceSessionGroup appSessionGroup in appGroup.Sessions
+                                        from AudioDeviceSession session in appSessionGroup.Sessions
+                                        select session)
+                {
+                    session.PropertyChanged -= Session_PropertyChanged;
+                    session.Dispose();
+                }
 
-            foreach (var session in _movedSessions)
+                foreach (var session in from AudioDeviceSessionGroup appGroup in _movedSessions
+                                        from AudioDeviceSessionGroup appSessionGroup in appGroup.Sessions
+                                        from AudioDeviceSession session in appSessionGroup.Sessions
+                                        select session)
+                {
+                    session.PropertyChanged -= Session_PropertyChanged;
+                    session.Dispose();
+                }
+
+                _sessionManager.UnregisterSessionNotification(this);
+            }
+            catch (Exception ex)
             {
-                session.PropertyChanged -= MovedSession_PropertyChanged;
+                Trace.WriteLine($"AudioDeviceSessionCollection#{_id} Dispose failed: {ex}");
             }
-
-            _sessionManager.UnregisterSessionNotification(this);
 
             GC.SuppressFinalize(this);
         }

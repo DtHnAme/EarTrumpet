@@ -217,6 +217,8 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             {
                 if (TryFind(pwstrDeviceId, out IAudioDevice dev))
                 {
+                    dev.PropertyChanged -= AudioDevice_PropertyChanged;
+
                     Remove(dev);
                 }
             }));
@@ -278,7 +280,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         {
             var audioDevice = (AudioDevice)sender;
 
-            if (e.PropertyName == nameof(audioDevice.State))
+            if (e.PropertyName == nameof(audioDevice.State) && audioDevice.State == SessionState.Invalid)
             {
                 var device = _enumerator.GetDevice(audioDevice.Id);
 
@@ -301,8 +303,6 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
                         Add(newDevice);
                     }));
                 }
-
-                audioDevice = null;
             }
         }
 
