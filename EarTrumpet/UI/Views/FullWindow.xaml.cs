@@ -74,7 +74,6 @@ namespace EarTrumpet.UI.Views
                     ViewModel.AllDevices.Count * _windowAndItemSize;
             }
 
-            SizeToContent = ViewModel.IsManyDevicesMode ? SizeToContent.Manual : SizeToContent.WidthAndHeight;
             ResizeMode = ViewModel.IsManyDevicesMode ? ResizeMode.CanResize : ResizeMode.NoResize;
             this.RemoveWindowStyle(User32.WS_MAXIMIZEBOX);
         }
