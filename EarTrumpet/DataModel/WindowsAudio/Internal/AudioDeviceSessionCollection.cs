@@ -1,4 +1,4 @@
-﻿using EarTrumpet.DataModel.Audio;
+using EarTrumpet.DataModel.Audio;
 using EarTrumpet.Interop.MMDeviceAPI;
 using System;
 using System.Collections.Generic;
@@ -21,6 +21,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             }
         }
 
+        private readonly int _id;
         private readonly Dispatcher _dispatcher;
         private readonly ObservableCollection<IAudioDeviceSession> _sessions = new ObservableCollection<IAudioDeviceSession>();
         private readonly List<IAudioDeviceSession> _movedSessions = new List<IAudioDeviceSession>();
@@ -31,7 +32,10 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
         public AudioDeviceSessionCollection(IAudioDevice parent, IMMDevice device, Dispatcher foregroundDispatcher)
         {
             _parent = new WeakReference<IAudioDevice>(parent);
+            _id = new Random().Next(1000, 10000);
             _dispatcher = foregroundDispatcher;
+
+            Trace.WriteLine($"AudioDeviceSessionCollection#{_id} Create dev={device.GetId()}");
 
             try
             {
@@ -47,7 +51,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"AudioDeviceSessionCollection Create dev={device.GetId()} {ex}");
+                Trace.WriteLine($"AudioDeviceSessionCollection#{_id} Create dev={device.GetId()} {ex}");
             }
         }
 
@@ -91,13 +95,13 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"AudioDeviceSessionCollection CreateAndAddSession {ex}");
+                Trace.WriteLine($"AudioDeviceSessionCollection#{_id} CreateAndAddSession {ex}");
             }
         }
 
         void IAudioSessionNotification.OnSessionCreated(IAudioSessionControl NewSession)
         {
-            Trace.WriteLine($"AudioDeviceSessionCollection OnSessionCreated");
+            Trace.WriteLine($"AudioDeviceSessionCollection#{_id} OnSessionCreated");
             if (_isRegistered)
             {
                 CreateAndAddSession(NewSession);
@@ -106,7 +110,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
         private void AddSession(IAudioDeviceSession session)
         {
-            Trace.WriteLine($"AudioDeviceSessionCollection AddSession {session.ExeName} {session.Id}");
+            Trace.WriteLine($"AudioDeviceSessionCollection#{_id} AddSession {session.ExeName} {session.Id}");
 
             session.PropertyChanged += Session_PropertyChanged;
 
@@ -167,7 +171,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
         private void RemoveSession(IAudioDeviceSession session)
         {
-            Trace.WriteLine($"AudioDeviceSessionCollection RemoveSession {session.ExeName} {session.Id}");
+            Trace.WriteLine($"AudioDeviceSessionCollection#{_id} RemoveSession {session.ExeName} {session.Id}");
 
             session.PropertyChanged -= Session_PropertyChanged;
 
@@ -244,6 +248,7 @@ namespace EarTrumpet.DataModel.WindowsAudio.Internal
 
         public void Dispose()
         {
+            Trace.WriteLine($"AudioDeviceSessionCollection#{_id} Dispose");
             foreach (var session in _sessions)
             {
                 session.PropertyChanged -= Session_PropertyChanged;
