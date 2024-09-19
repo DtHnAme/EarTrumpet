@@ -2180,10 +2180,6 @@
                                    HorizontalAlignment="Left"
                                    gif:AnimationBehavior.SourceUri="pack://application:,,,/EarTrumpet;component/Assets/Welcome.gif"
                                    gif:AnimationBehavior.RepeatBehavior="Forever" />
-                            <CheckBox Margin="0,20,12,-6"
-                                        HorizontalAlignment="Left"
-                                        Content="{x:Static resx:Resources.PrivacyCheckboxText}"
-                                        IsChecked="{Binding IsTelemetryEnabled, Mode=TwoWay}" />
                             <TextBlock Margin="0,12,12,6" Style="{StaticResource HyperlinkBlock}">
                                 <Hyperlink Command="{Binding OpenPrivacy}">
                                     <Run Text="{x:Static resx:Resources.PrivacyPolicyText}" />

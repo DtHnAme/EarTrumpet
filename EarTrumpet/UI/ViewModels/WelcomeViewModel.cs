@@ -13,12 +13,6 @@ namespace EarTrumpet.UI.ViewModels
         public ICommand OpenPrivacy { get; }
         public ICommand DisplaySettingsChanged { get; }
 
-        public bool IsTelemetryEnabled
-        {
-            get => _settings.IsTelemetryEnabled;
-            set => _settings.IsTelemetryEnabled = value;
-        }
-
         private readonly AppSettings _settings;
         private WindowViewState _state;
 
