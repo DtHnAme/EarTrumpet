@@ -1,4 +1,5 @@
-﻿using EarTrumpet.Interop;
+﻿using EarTrumpet.DataModel;
+using EarTrumpet.Interop;
 using EarTrumpet.Interop.Helpers;
 using EarTrumpet.UI.Helpers;
 using System;
@@ -46,7 +47,12 @@ namespace EarTrumpet.UI.Controls
         {
             if (SourceEx != null && IsLoaded)
             {
-                Source = LoadImage(SourceEx.IconPath, SourceEx.IsDesktopApp);
+                if (!ImageCache.FindCache(SourceEx.IconPath, out var image))
+                {
+                    image = LoadImage(SourceEx.IconPath, SourceEx.IsDesktopApp);
+                    ImageCache.CreateCache(SourceEx.IconPath, image);
+                }
+                Source = image;
             }
         }
 
