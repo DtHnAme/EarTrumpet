@@ -28,8 +28,6 @@ namespace EarTrumpet.DataModel.AppInformation.Internal
             {
                 try
                 {
-                    ZombieProcessException.ThrowIfZombie(processId, handle);
-
                     var fileNameBuilder = new StringBuilder(260);
                     uint bufferLength = (uint)fileNameBuilder.Capacity;
                     if (Kernel32.QueryFullProcessImageName(handle, 0, fileNameBuilder, ref bufferLength) != 0)
@@ -57,10 +55,6 @@ namespace EarTrumpet.DataModel.AppInformation.Internal
                     ExeName = Path.GetFileNameWithoutExtension(imageName);
                     SmallLogoPath = imageName;
                     PackageInstallPath = imageName;
-                }
-                else
-                {
-                    throw new ZombieProcessException(processId);
                 }
             }
 
