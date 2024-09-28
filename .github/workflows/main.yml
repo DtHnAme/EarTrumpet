@@ -31,7 +31,7 @@ jobs:
     runs-on: windows-2019
     strategy:
       matrix:
-        channel: [AppInstaller, Store, Chocolatey]
+        channel: [AppInstaller]
         include:
           - channel: AppInstaller
             publisher:
@@ -92,12 +92,6 @@ jobs:
 
       - name: Restore NuGet Packages
         run: nuget restore EarTrumpet.vs15.sln
-
-      - name: Set Bugsnag API Key
-        shell: powershell
-        run: |
-          $cfg = Get-Content ".\EarTrumpet\app.config"
-          $cfg | ForEach-Object { $_.Replace("{bugsnag.apikey}", "${{ secrets.bugsnag_api_key }}") } | Set-Content ".\EarTrumpet\app.config"
 
       - name: Adjust manifest and store association
         if: matrix.channel == 'Store' || matrix.channel == 'AppInstaller'
@@ -248,10 +242,10 @@ jobs:
   release:
     needs: build
     runs-on: windows-2019
-    if: github.event_name != 'pull_request'
+    if: false
     strategy:
       matrix:
-        channel: [AppInstaller, Store, Chocolatey]
+        channel: [AppInstaller]
       max-parallel: 3
     env:
       AZURE_TENANT_ID: ${{ secrets.azure_tenant_id }}
